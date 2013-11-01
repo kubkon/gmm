@@ -17,8 +17,8 @@ with open('faithful.txt', 'rt') as f:
 
 # Initialize GMM algorithm
 means = [np.array([4.0, 80], np.float), np.array([2.0, 55], np.float)]
-covariances = [np.identity(2), np.identity(2), np.identity(2)]
-mixing_probs = [1/3, 1/3, 1/3]
+covariances = [np.identity(2), np.identity(2)]
+mixing_probs = np.array([1/3, 1/3], np.float)
 gmm_model = GMM(means, covariances, mixing_probs)
 
 # Fit GMM to the data
