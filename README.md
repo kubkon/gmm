@@ -61,7 +61,7 @@ for mean, cov, prob in zip(gmm_model.means, gmm_model.covariances, gmm_model.mix
     print("Fitted covariance matrix:")
     pprint(cov)
 
-    pprint("Fitted mixing probability:")
+    print("Fitted mixing probability:")
     pprint(prob)
 ```
 
