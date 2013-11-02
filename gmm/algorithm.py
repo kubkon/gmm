@@ -8,37 +8,41 @@ class GMM:
     pseudo-code described in the book by C. Bishop "Pattern Recognition
     and Machine Learning", chapter 9.
     """
-    def __init__(self, means, covariances, mixing_probs, epsilon=1e-6):
+    def __init__(self, n_components, means=None, covariances=None, mixing_probs=None, epsilon=1e-6):
         """
         Arguments:
-        means -- initial array of mean vectors (numpy array of numpy arrays)
-        covariances -- initial array of covariance matrices (numpy array of numpy arrays)
-        mixing_probs -- initial vector (numpy array) of mixing probabilities
+        n_components -- number of mixtures (components) to fit
+        means -- (optional) initial array of mean vectors (numpy array of numpy arrays)
+        covariances -- (optional) initial array of covariance matrices (numpy array of numpy arrays)
+        mixing_probs -- (optional) initial vector (numpy array) of mixing probabilities
         epsilon -- (optional) convergence criterion
         """
+        self.n_components = n_components
         self.means = means
         self.covariances = covariances
         self.mixing_probs = mixing_probs
-        self.no_components = covariances.shape[0]
         self.epsilon = epsilon
 
     def fit(self, features):
         """
         Fits a GMM into a set of feature data.
+
+        Arguments:
+        features -- input features data set
         """
         # Initialise
         n, _ = features.shape
-        norm_densities = np.empty((n, self.no_components), np.float)
-        responsibilities = np.empty((n, self.no_components), np.float)
+        norm_densities = np.empty((n, self.n_components), np.float)
+        responsibilities = np.empty((n, self.n_components), np.float)
         old_log_likelihood = 0
+        self._initialise_parameters(features)
 
         while True:
-
             # Compute normal densities
             for i in np.arange(n):
                 x = features[i]
 
-                for j in np.arange(self.no_components):
+                for j in np.arange(self.n_components):
                     norm_densities[i][j] = self.multivariate_normal_pdf(x, self.means[j], self.covariances[j])
 
             # Estimate log likelihood
@@ -53,11 +57,11 @@ class GMM:
             for i in np.arange(n):
                 x = features[i]
                 denominator = np.dot(self.mixing_probs.T, norm_densities[i])
-                for j in np.arange(self.no_components):
+                for j in np.arange(self.n_components):
                     responsibilities[i][j] = self.mixing_probs[j] * norm_densities[i][j] / denominator
 
             # M-step: re-estimate the parameters
-            for i in np.arange(self.no_components):
+            for i in np.arange(self.n_components):
                 responsibility = (responsibilities.T)[i]
 
                 # Common denominator
@@ -84,7 +88,7 @@ class GMM:
         # Initialise
         n, _ = features.shape
         partition = np.empty(n, np.int)
-        distances = np.empty(self.no_components, np.float)
+        distances = np.empty(self.n_components, np.float)
         cov_inverses = [np.linalg.det(cov) for cov in self.covariances]
 
         # Assign each feature point to a Gaussian distribution
@@ -92,7 +96,7 @@ class GMM:
             x = features[i]
 
             # Compute Mahanalobis distances from each mixture
-            for j in np.arange(self.no_components):
+            for j in np.arange(self.n_components):
                 distances[j] = np.dot(np.dot((x - self.means[j]).T, cov_inverses[j]), x - self.means[j])
 
             # Find index of the minimum distance, and assign to a cluster
@@ -109,4 +113,40 @@ class GMM:
         cov_inverse = np.linalg.inv(covariance)
         cov_det = np.linalg.det(covariance)
         exponent = np.dot(np.dot(centered.T, cov_inverse), centered)
-        return np.exp(-0.5 * exponent) / np.sqrt(cov_det * np.power(2 * np.pi, self.no_components))
+        return np.exp(-0.5 * exponent) / np.sqrt(cov_det * np.power(2 * np.pi, self.n_components))
+
+    def _initialise_parameters(self, features):
+        """
+        Initialises parameters: means, covariances, and mixing probabilities
+        if undefined.
+
+        Arguments:
+        features -- input features data set
+        """
+        if not self.means or not self.covariances:
+            n, m = features.shape
+
+            # Shuffle features set
+            indices = np.arange(n)
+            np.random.shuffle(np.arange(n))
+            features_shuffled = np.array([features[i] for i in indices])
+
+            # Split into n_components subarrays
+            divs = int(np.floor(n / self.n_components))
+            features_split = [features_shuffled[i:i+divs] for i in range(0, n, divs)]
+
+            # Estimate means/covariances (or both)
+            if not self.means:
+                means = []
+                for i in np.arange(self.n_components):
+                    means.append(np.mean(features_split[i], axis=0))
+                self.means = np.array(means)
+
+            if not self.covariances:
+                covariances = []
+                for i in np.arange(self.n_components):
+                    covariances.append(np.cov(features_split[i].T))
+                self.covariances = np.array(covariances)
+
+        if not self.mixing_probs:
+            self.mixing_probs = np.repeat(1 / self.n_components, self.n_components)
