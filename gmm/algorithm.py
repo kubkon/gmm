@@ -89,7 +89,7 @@ class GMM:
         n, _ = features.shape
         partition = np.empty(n, np.int)
         distances = np.empty(self.n_components, np.float)
-        cov_inverses = [np.linalg.det(cov) for cov in self.covariances]
+        cov_inverses = [np.linalg.inv(cov) for cov in self.covariances]
 
         # Assign each feature point to a Gaussian distribution
         for i in np.arange(n):
