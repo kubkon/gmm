@@ -8,7 +8,13 @@ class GMM:
     pseudo-code described in the book by C. Bishop "Pattern Recognition
     and Machine Learning", chapter 9.
     """
-    def __init__(self, n_components, means=None, covariances=None, mixing_probs=None, epsilon=1e-6):
+    def __init__(self,
+                 n_components,
+                 means=None,
+                 covariances=None,
+                 mixing_probs=None,
+                 epsilon=1e-6,
+                 callback = None):
         """
         Arguments:
         n_components -- number of mixtures (components) to fit
@@ -22,6 +28,7 @@ class GMM:
         self.covariances = covariances
         self.mixing_probs = mixing_probs
         self.epsilon = epsilon
+        self.__callback = callback
 
     def fit(self, features):
         """
@@ -49,6 +56,8 @@ class GMM:
             log_vector = np.log(np.array([np.dot(self.mixing_probs.T, norm_densities[i]) for i in np.arange(n)]))
             log_likelihood = np.dot(log_vector.T, np.ones(n))
             
+            self.call_back()
+
             # Check for convergence
             if np.absolute(log_likelihood - old_log_likelihood) < self.epsilon:
                 break
@@ -103,6 +112,15 @@ class GMM:
             partition[i] = np.argmin(distances)
 
         return partition
+
+    def call_back(self):
+        if self.__callback:
+            dct = {
+                'mixing_probs': self.mixing_probs,
+                'means': self.means,
+                'covariances': self.covariances
+            }
+            self.__callback(dct)
 
     def multivariate_normal_pdf(self, x, mean, covariance):
         """
